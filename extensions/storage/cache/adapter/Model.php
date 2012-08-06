@@ -169,6 +169,7 @@ class Model extends \lithium\core\Object {
 				return false;
 			}
 			
+			$cache = $cache->to('array');
 			return $cache['data'];
 		};
 	}

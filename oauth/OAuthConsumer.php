@@ -150,9 +150,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			$nonce = $response['nonce'];
 		}
 		
-		if ($cache = TokenCache::read($config['temp_cache'], self::_key($service, 'temp' . $nonce))) {
-			$cache = $cache->to('array');
-		}
+		$cache = TokenCache::read($config['temp_cache'], self::_key($service, 'temp' . $nonce));
 		
 		if (!$cache || $cache['authorized'] && array_diff($response, $cache['response'])) {
 			// Input does not correspond to an existing request.
@@ -198,7 +196,6 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			$error = "Unable to locate valid access credentials.";
 			return null;
 		}
-		$cache = $cache->to('array');
 		return static::adapter($service)->expires($cache['token'], $error);
 	}
 
@@ -230,7 +227,6 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 		if ((!$cache = TokenCache::read($config['token_cache'], self::_key($service))) || !$cache['authorized']) {
 			return true;
 		}
-		$cache = $cache->to('array');
 		$cache['authorized'] = false;
 		TokenCache::write($config['token_cache'], self::_key($service), $cache, '+2 Years');
 		
@@ -296,7 +292,6 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			$error = "Unable to locate valid access credentials.";
 			return false;
 		}
-		$cache = $cache->to('array');
 		
 		$expires = static::adapter($service)->expires($cache['token']);
 		while ($expires && (!$threshold || time() + $threshold > $expires)) {
@@ -307,7 +302,6 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			}
 			
 			if ($cache = TokenCache::read($adapter, $key, array('block' => true))){
-				$cache = $cache->to('array');
 				
 				if (!$cache['authorized']) {
 					$error = $cache['error'];
