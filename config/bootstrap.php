@@ -38,15 +38,15 @@ Libraries::paths( array(
 
 // TokenCache::config(array(
 // 	'session' => array(
-// 		'adapter' => 'session'
+// 		'adapter' => 'Session'
 // 	),
 // 	'file' => array(
-// 		'adapter' => 'file',
+// 		'adapter' => 'File',
 // 		'strategies' => array('serializer')
 // 	),
 // 	'model' => array(
-// 		'adapter' => 'model',
-// 		'model' => 'tokens'
+// 		'adapter' => 'Model',
+// 		'model' => 'Tokens'
 // 	)
 // ));
 
@@ -88,7 +88,7 @@ Libraries::paths( array(
 // 			'consumer_secret' => 'x7b85480b21feea8fd5d5bf156fa49568f6df165'
 // 		),
 // 		true => array(
-// 			'adapter'         => 'oauth',
+// 			'adapter'         => 'OAuth',
 // 			'temp_cache'      => 'session',
 // 			'token_cache'     => 'model',
 // 			'base'            => 'https://api.login.yahoo.com/',

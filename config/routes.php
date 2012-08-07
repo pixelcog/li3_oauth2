@@ -10,7 +10,7 @@
 
 // Router::connect('/oauth/{:service}/{:action}', array(
 // 	'library'    => 'li3_oauth2',
-// 	'controller' => 'oauth'
+// 	'controller' => 'OAuth'
 // ));
 
 ?>
