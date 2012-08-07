@@ -88,7 +88,7 @@ class OAuthService extends \lithium\net\http\Service {
 	 * @return mixed Returns response object, response body, or parsed oauth parameters depending
 	 *               on the `return` parameter.
 	 */
-	public function send($method, $path = null, array $data = array(), array $options = array()) {
+	public function send($method, $path = null, $data = array(), array $options = array()) {
 		$defaults = array(
 			'oauth' => array(),
 			'sign' => false,
