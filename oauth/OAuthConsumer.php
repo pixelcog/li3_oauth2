@@ -9,6 +9,7 @@
 namespace li3_oauth2\oauth;
 
 use lithium\core\Environment;
+use lithium\analysis\Logger;
 use li3_oauth2\extensions\storage\TokenCache;
 
 /**
@@ -99,6 +100,10 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			return false;
 		}
 		
+		if ($config['logging']) {
+			Logger::info('OAuth requesting access for `'.$service.'` service.');
+		}
+		
 		$defaults = array(
 			'nonce'    => null,
 			'callback' => null
@@ -120,6 +125,11 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 		
 		if ($authorized) {
 			TokenCache::write($config['token_cache'], self::_key($service), $cache, '+2 Years');
+			
+			if ($config['logging']) {
+				$expires = static::adapter($service)->expires($cache['token']);
+				Logger::info('OAuth access granted for `'.$service.'` service.  Expires in '.($expire - time()).' seconds');
+			}
 		}
 		
 		return $response;
@@ -142,6 +152,10 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	public static function verify($service, array $response, &$error = null, array &$request = null) {
 		if (!is_array($config = static::config($service))) {
 			return false;
+		}
+		
+		if ($config['logging']) {
+			Logger::info('OAuth verifying access for `'.$service.'` service.');
 		}
 		
 		$error = null;
@@ -174,6 +188,11 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 		
 		if ($authorized) {
 			TokenCache::write($config['token_cache'], self::_key($service), $cache, '+2 Years');
+			
+			if ($config['logging']) {
+				$expires = static::adapter($service)->expires($cache['token']);
+				Logger::info('OAuth access granted for `'.$service.'` service.  Expires in '.($expire - time()).' seconds');
+			}
 		}
 		
 		return $authorized;
@@ -230,6 +249,10 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 		$cache['authorized'] = false;
 		TokenCache::write($config['token_cache'], self::_key($service), $cache, '+2 Years');
 		
+		if ($config['logging']) {
+			$expires = static::adapter($service)->expires($cache['token']);
+			Logger::info('OAuth access released for `'.$service.'` service');
+		}
 		return static::adapter($service)->release($cache['token'], $error);
 	}
 
@@ -311,9 +334,19 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 					$cache['authorized'] = false;
 					$cache['error'] = $error;
 					TokenCache::write($adapter, $key, $cache, '+2 Years');
+					
+					if ($config['logging']) {
+						$expires = static::adapter($service)->expires($cache['token']);
+						Logger::info('OAuth access refreshed failed for `'.$service.'` service.  Error: '.$error);
+					}
 					return false;
 				}
 				TokenCache::write($adapter, $key, $cache, '+2 Years');
+				
+				if ($config['logging']) {
+					$expires = static::adapter($service)->expires($cache['token']);
+					Logger::info('OAuth access granted for `'.$service.'` service.  Expires in '.($expire - time()).' seconds');
+				}
 				break;
 			}
 			elseif (!$cache = TokenCache::read($adapter, $key) || !$cache['authorized']) {
@@ -370,7 +403,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 * @return array Returns the final array of settings for the given named configuration.
 	 */
 	protected static function _initConfig($name, $config) {
-		$defaults = array('temp_cache' => null,'token_cache' => null);
+		$defaults = array('temp_cache' => null, 'token_cache' => null, 'logging' => false);
 		return parent::_initConfig($name, (array) $config + $defaults);
 	}
 }
