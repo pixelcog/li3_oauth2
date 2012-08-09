@@ -128,7 +128,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			
 			if ($config['logging']) {
 				$expires = static::adapter($service)->expires($cache['token']);
-				Logger::info('OAuth access granted for `'.$service.'` service.  Expires in '.($expire - time()).' seconds');
+				Logger::info('OAuth access granted for `'.$service.'` service.  Expires in '.($expires - time()).' seconds');
 			}
 		}
 		
@@ -191,7 +191,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			
 			if ($config['logging']) {
 				$expires = static::adapter($service)->expires($cache['token']);
-				Logger::info('OAuth access granted for `'.$service.'` service.  Expires in '.($expire - time()).' seconds');
+				Logger::info('OAuth access granted for `'.$service.'` service.  Expires in '.($expires - time()).' seconds');
 			}
 		}
 		
@@ -345,7 +345,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 				
 				if ($config['logging']) {
 					$expires = static::adapter($service)->expires($cache['token']);
-					Logger::info('OAuth access granted for `'.$service.'` service.  Expires in '.($expire - time()).' seconds');
+					Logger::info('OAuth access granted for `'.$service.'` service.  Expires in '.($expires - time()).' seconds');
 				}
 				break;
 			}
