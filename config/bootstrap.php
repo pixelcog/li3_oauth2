@@ -101,4 +101,21 @@ Libraries::paths( array(
 // ));
 
 
+/**
+ * All of the public methods of OAuthConsumer are filterable. You may wish to use this to wrap
+ * Logging functions around the methods for debugging purposes.  Here is an example of how that
+ * might be done:
+ *
+ * @see lithium\analysis\Logger
+ */
+//use lithium\analysis\Logger;
+
+//OAuthConsumer::applyFilter('hasAccess', function ($self, $params, $chain) {
+//	$result = $chain->next($self, $params, $chain);
+//	if (!empty($params['error'])) {
+//		Logger::critical('Access denied in `'.$params['service'].'` OAuth service: '.$params['error']);
+//	}
+//	return $result;
+//});
+
 ?>
