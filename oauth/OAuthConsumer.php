@@ -63,12 +63,21 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 * @param array $request Optional specification of access parameters to test against.
 	 *              Formatted the same as the corresponding input in the `request` method.
 	 * @return boolean Returns `true` if a the the token is valid, `false` otherwise.
+	 * @filter
 	 */
-	public static function hasAccess($service, array $request = array()) {
-		if (!$cache = self::_refresh($service, $error, 300)) {
-			return false;
-		}
-		return static::adapter($service)->hasAccess($cache['token'], $request);
+	public static function hasAccess($service, array $request = array(), &$error = null) {
+		$params = compact('service','request');
+		$params['error'] = &$error;
+		
+		return static::_filter(__FUNCTION__, $params, function($self, $params) {
+			$service = $params['service'];
+			$request = $params['request'];
+			
+			if (!$cache = $self::_refresh($service, $params['error'], 300)) {
+				return false;
+			}
+			return $self::adapter($service)->hasAccess($cache['token'], $request, $params['error']);
+		});
 	}
 
 	/**
@@ -93,36 +102,45 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 * @return mixed Returns `true` if a the we have obtained an access token, or a url string if
 	 *               the user is needed to interact with the remote authorization server, or false
 	 *               if there an error in the request process.
+	 * @filter
 	 */
 	public static function request($service, array $request = array(), &$error = null) {
-		if (!is_array($config = static::config($service))) {
-			return false;
-		}
+		$params = compact('service','request');
+		$params['error'] = &$error;
 		
-		$defaults = array(
-			'nonce'    => null,
-			'callback' => null
-		);
-		$request += $defaults;
-		
-		if ($nonce = $request['nonce']) {
-			$request['callback'] = self::_addUrlParams($request['callback'], compact('nonce'));
-		}
-		
-		$token = array();
-		$error = null;
-		
-		$authorized = true === ($response = static::adapter($service)->request($token, $request, $error));
-		
-		$cache = compact('request','authorized','token','error');
-		
-		TokenCache::write($config['temp_cache'], self::_key($service, 'temp' . $nonce), $cache, '+1 hour');
-		
-		if ($authorized) {
-			TokenCache::write($config['token_cache'], self::_key($service), $cache, '+2 Years');
-		}
-		
-		return $response;
+		return static::_filter(__FUNCTION__, $params, function($self, $params) {
+			$service = $params['service'];
+			$request = $params['request'];
+			
+			if (!is_array($config = $self::config($service))) {
+				return false;
+			}
+			$defaults = array(
+				'nonce'    => null,
+				'callback' => null
+			);
+			$request += $defaults;
+			
+			if ($nonce = $request['nonce']) {
+				$request['callback'] = $self::invokeMethod('_addUrlParams', array($request['callback'], compact('nonce')));
+			}
+			$token = array();
+			$error = null;
+			
+			$authorized = true === ($response = $self::adapter($service)->request($token, $request, $error));
+			
+			$cache = compact('request','authorized','token','error');
+			$key = $self::invokeMethod('_key', array($service, 'temp' . $nonce));
+			TokenCache::write($config['temp_cache'], $key, $cache, '+1 hour');
+			
+			if ($authorized) {
+				$key = $self::invokeMethod('_key', array($service));
+				TokenCache::write($config['token_cache'], $key, $cache, '+2 Years');
+			}
+			
+			$params['error'] = $error;
+			return $response;
+		});
 	}
 
 	/**
@@ -138,45 +156,55 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 *              for it.
 	 * @return boolean Returns `true` if the requested authorization has been granted, `false`
 	 *                 otherwise.
+	 * @filter
 	 */
 	public static function verify($service, array $response, &$error = null, array &$request = null) {
-		if (!is_array($config = static::config($service))) {
-			return false;
-		}
+		$params = compact('service','response');
+		$params['error'] = &$error;
+		$params['request'] = &$request;
 		
-		$error = null;
-		$nonce = null;
-		if (!empty($response['nonce'])) {
-			$nonce = $response['nonce'];
-		}
-		
-		$cache = TokenCache::read($config['temp_cache'], self::_key($service, 'temp' . $nonce));
-		
-		if (!$cache || $cache['authorized'] && array_diff($response, $cache['response'])) {
-			// Input does not correspond to an existing request.
-			$error = "Unable to locate authorization request";
-			return false;
-		}
-		
-		if ($cache['authorized']) {
-			// User likely hit refresh accidentally, just replay the output.
+		return static::_filter(__FUNCTION__, $params, function($self, $params) {
+			$service = $params['service'];
+			$response = $params['response'];
+			
+			if (!is_array($config = $self::config($service))) {
+				return false;
+			}
+			$error = null;
+			$nonce = null;
+			if (!empty($response['nonce'])) {
+				$nonce = $response['nonce'];
+			}
+			
+			$key = $self::invokeMethod('_key', array($service, 'temp' . $nonce));
+			$cache = TokenCache::read($config['temp_cache'], $key);
+			
+			// does the input correspond to an existing request?
+			if (!$cache || $cache['authorized'] && array_diff($response, $cache['response'])) {
+				$params['error'] = "Unable to locate authorization request";
+				return false;
+			}
+			$token = $cache['token'];
 			$request = $cache['request'];
-			return true;
-		}
-		
-		$token   = $cache['token'];
-		$request = $cache['request'];
-		$authorized = static::adapter($service)->verify($token, $response, $error);
-		
-		$cache = compact('request','response','authorized','token','error');
-		
-		TokenCache::write($config['temp_cache'], self::_key($service, 'temp' . $nonce), $cache, '+1 hour');
-		
-		if ($authorized) {
-			TokenCache::write($config['token_cache'], self::_key($service), $cache, '+2 Years');
-		}
-		
-		return $authorized;
+			
+			// if user likely hit refresh accidentally, just replay the output.
+			if ($cache['authorized']) {
+				$params['request'] = $request;
+				return true;
+			}
+			$authorized = $self::adapter($service)->verify($token, $response, $error);
+			
+			$cache = compact('request', 'response', 'authorized', 'token', 'error');
+			TokenCache::write($config['temp_cache'], $key, $cache, '+1 hour');
+			
+			if ($authorized) {
+				$key = $self::invokeMethod('_key', array($service));
+				TokenCache::write($config['token_cache'], $key, $cache, '+2 Years');
+			}
+			$params['error'] = $error;
+			$params['request'] = $request;
+			return $authorized;
+		});
 	}
 
 	/**
@@ -186,17 +214,24 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 * @param string $error Optional reference to variable in which to place error information.
 	 * @return integer Returns a Unix epoch timestamp at which the token must be renewed, or
 	 *                 `null` on error.
+	 * @filter
 	 */
 	public static function expires($service, &$error = null) {
-		if (!is_array($config = static::config($service))) {
-			return null;
-		}
-		
-		if ((!$cache = TokenCache::read($config['token_cache'], self::_key($service))) || !$cache['authorized']) {
-			$error = "Unable to locate valid access credentials.";
-			return null;
-		}
-		return static::adapter($service)->expires($cache['token'], $error);
+		$params = array('service' => $service, 'error' => &$error);
+		return static::_filter(__FUNCTION__, $params, function($self, $params) {
+			$service = $params['service'];
+			
+			if (!is_array($config = $self::config($service))) {
+				return null;
+			}
+			
+			$key = $self::invokeMethod('_key', array($service));
+			if ((!$cache = TokenCache::read($config['token_cache'], $key)) || !$cache['authorized']) {
+				$params['error'] = "Unable to locate valid access credentials.";
+				return null;
+			}
+			return $self::adapter($service)->expires($cache['token'], $params['error']);
+		});
 	}
 
 	/**
@@ -206,9 +241,13 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 * @param string $error Optional reference to variable in which to place error information.
 	 * @return boolean Returns `true` if the token has been successfully refreshed, `false`
 	 *                 otherwise.
+	 * @filter
 	 */
 	public static function refresh($service, &$error = null) {
-		return (boolean) self::_refresh($service, $error);
+		$params = array('service' => $service, 'error' => &$error);
+		return static::_filter(__FUNCTION__, $params, function($self, $params) {
+			return (boolean) $self::_refresh($params['service'], $params['error']);
+		});
 	}
 
 	/**
@@ -218,19 +257,26 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 * @param string $error Optional reference to variable in which to place error information.
 	 * @return boolean Returns `true` if the token has been successfully refreshed, `false`
 	 *                 otherwise.
+	 * @filter
 	 */
 	public static function release($service, &$error = null) {
-		if (!is_array($config = static::config($service))) {
-			return null;
-		}
-		
-		if ((!$cache = TokenCache::read($config['token_cache'], self::_key($service))) || !$cache['authorized']) {
-			return true;
-		}
-		$cache['authorized'] = false;
-		TokenCache::write($config['token_cache'], self::_key($service), $cache, '+2 Years');
-		
-		return static::adapter($service)->release($cache['token'], $error);
+		$params = array('service' => $service, 'error' => &$error);
+		return static::_filter(__FUNCTION__, $params, function($self, $params) {
+			$service = $params['service'];
+			
+			if (!is_array($config = $self::config($service))) {
+				return null;
+			}
+			
+			$key = $self::invokeMethod('_key', array($service));
+			if ((!$cache = TokenCache::read($config['token_cache'], $key)) || !$cache['authorized']) {
+				return true;
+			}
+			$cache['authorized'] = false;
+			TokenCache::write($config['token_cache'], $key, $cache, '+2 Years');
+			
+			return $self::adapter($service)->release($cache['token'], $params['error']);
+		});
 	}
 
 	/**
@@ -240,14 +286,23 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 * @param string $error Optional reference to variable in which to place error information.
 	 * @return boolean Returns `true` if the token has been successfully refreshed, `false`
 	 *                 otherwise.
+	 * @filter
 	 */
 	public static function access($method, $service, $path = null, array $data = array(), &$error = null) {
-		$error = null;
+		$params = compact('method','service','path','data');
+		$params['error'] = &$error;
 		
-		if (!$cache = self::_refresh($service, $error, 300)) {
-			return false;
-		}
-		return static::adapter($service)->access($method, $cache['token'], $path, $data, $error);
+		return static::_filter(__FUNCTION__, $params, function($self, $params) {
+			$service = $params['service'];
+			$method = $params['method'];
+			$path = $params['path'];
+			$data = $params['data'];
+			
+			if (!$cache = $self::_refresh($service, $params['error'], 300)) {
+				return false;
+			}
+			return $self::adapter($service)->access($method, $cache['token'], $path, $data, $params['error']);
+		});
 	}
 
 	/**
@@ -280,7 +335,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 *                renew access credentials.
 	 * @return array Returns token cache data or `false` on error.
 	 */
-	private static function _refresh($service, &$error = null, $threshold = null) {
+	public static function _refresh($service, &$error = null, $threshold = null) {
 		if (!is_array($config = static::config($service))) {
 			return false;
 		}
@@ -332,7 +387,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 * @param string $key Optional string to identify data type and/or add entropy for uniqueness.
 	 * @return string Key for the token or temporary token data cache.
 	 */
-	private static function _key($service, $key = 'token') {
+	protected static function _key($service, $key = 'token') {
 		return implode('-', array($service, Environment::get(), $key));
 	}
 
@@ -343,7 +398,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 * @param mixed $params Parameters to append to the GET query. Will be typecast as an array.
 	 * @return string Key for the token or temporary token data cache.
 	 */
-	private static function _addUrlParams($url, $params) {
+	protected static function _addUrlParams($url, $params) {
 		$params = http_build_query((array) $params);
 		
 		if (($pos = strpos($url, '?')) === false) {
