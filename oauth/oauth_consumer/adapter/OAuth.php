@@ -86,7 +86,7 @@ class OAuth extends \lithium\core\Object {
 	 *        Formatted the same as the input to the `request` method.
 	 * @return boolean Returns `true` if a the the token is valid, `false` otherwise.
 	 */
-	public function hasAccess(array $token, array $request = array()) {
+	public function hasAccess(array $token, array $request = array(), &$error = null) {
 		$defaults = array(
 			'oauth_token' => '',
 			'oauth_token_secret' => '',
@@ -94,11 +94,13 @@ class OAuth extends \lithium\core\Object {
 		);
 		$token += $defaults;
 		
-		if (!$token['oauth_token'] || !$token['oauth_token']) {
+		if (!$token['oauth_token'] || !$token['oauth_token_secret']) {
+			$error = 'Missing OAuth token or secret.';
 			return false;
 		}
 		
 		if ($token['auth_expires'] && time() > $token['auth_expires']) {
+			$error = 'The authorization has expired. ('.$token['auth_expires'].')';
 			return false;
 		}
 		
@@ -154,7 +156,7 @@ class OAuth extends \lithium\core\Object {
 		$token = $response['data'];
 		
 		if (!empty($token['oauth_expires_in'])) {
-			$token['expires'] = time() + (integer) $token['oauth_expires_in'];
+			$token['expires'] = $this->_absoluteTime($token['oauth_expires_in']);
 		}
 		
 		if (!empty($token['xoauth_request_auth_url'])) {
@@ -216,10 +218,10 @@ class OAuth extends \lithium\core\Object {
 		$token = $response['data'];
 		
 		if (!empty($token['oauth_expires_in'])) {
-			$token['expires'] = time() + (integer) $token['oauth_expires_in'];
+			$token['expires'] = $this->_absoluteTime($token['oauth_expires_in']);
 		}
 		if (!empty($token['oauth_authorization_expires_in'])) {
-			$token['auth_expires'] = time() + (integer) $token['oauth_authorization_expires_in'];
+			$token['auth_expires'] = $this->_absoluteTime($token['oauth_authorization_expires_in']);
 		}
 		
 		return true;
@@ -285,10 +287,10 @@ class OAuth extends \lithium\core\Object {
 		$token = $response['data'];
 		
 		if (!empty($token['oauth_expires_in'])) {
-			$token['expires'] = time() + (integer) $token['oauth_expires_in'];
+			$token['expires'] = $this->_absoluteTime($token['oauth_expires_in']);
 		}
 		if (!empty($token['oauth_authorization_expires_in'])) {
-			$token['auth_expires'] = time() + (integer) $token['oauth_authorization_expires_in'];
+			$token['auth_expires'] = $this->_absoluteTime($token['oauth_authorization_expires_in']);
 		}
 		
 		return true;
@@ -344,6 +346,22 @@ class OAuth extends \lithium\core\Object {
 			}
 		}
 		return $response->body();
+	}
+	
+	/**
+	 * Convert a relative time (in seconds) to an absolute timestamp and prevent it from overflowing
+	 * when assigned to a 32-bit integer.
+	 *
+	 * @param array $relative
+	 */
+	protected function _absoluteTime($time) {
+		$maxInt = 2147483646;
+		$now = time();
+		
+		if ((integer) $time < $maxInt - $now) {
+			return $now + (integer) $time;
+		}
+		return $maxInt;
 	}
 }
 
