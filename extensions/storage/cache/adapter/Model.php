@@ -128,7 +128,7 @@ class Model extends \lithium\core\Object {
 			if (!empty($locks[$params['key']])) {
 				$cache = $locks[$params['key']];
 			}
-			elseif (!$cache = $model::first($conditions)){
+			elseif (!$cache = $model::first(compact('conditions'))) {
 				$cache = $model::create($conditions);
 			}
 			return $cache->save(array(
@@ -156,7 +156,8 @@ class Model extends \lithium\core\Object {
 				$cache = $locks[$key];
 			}
 			else {
-				$cache = $model::first(array($fields['key'] => $params['key']));
+				$conditions = array($fields['key'] => $params['key']);
+				$cache = $model::first(compact('conditions'));
 			}
 			
 			if (!$cache || !isset($cache['data'])) {
