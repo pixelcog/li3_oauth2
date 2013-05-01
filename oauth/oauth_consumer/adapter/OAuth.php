@@ -316,7 +316,7 @@ class OAuth extends \lithium\core\Object {
 	 * @param string $error Optional reference to variable in which to place error information.
 	 * @return boolean Returns `true` if a the processes was successful, `false` otherwise.
 	 */
-	public function access($method, array $token, $path = null, array $data = array(), &$error = null) {
+	public function access($method, array $token, $path = null, array $data = array(), array $options = array(), &$error = null) {
 		$defaults = array('oauth_token' => '', 'oauth_token_secret' => '');
 		$token += $defaults;
 		$error = null;
@@ -336,16 +336,19 @@ class OAuth extends \lithium\core\Object {
 			rawurlencode($token['oauth_token_secret']);
 		$return = 'response';
 		
-		$response = $this->_service->send($method, $path, $data, compact('oauth', 'sign', 'return'));
+		$response = $this->_service->send($method, $path, $data, compact('oauth', 'sign', 'return') + $options);
 		
-		if ($response->status['code'] != 200) {
-			$error = 'Error '.$response->status['code'];
-			
-			if (!empty($response->headers['WWW-Authenticate'])) {
-				$error .= ' ('.$response->headers['WWW-Authenticate'].')';
+		if ($response instanceof \lithium\net\http\Message) {
+			if ($response->status['code'] != 200) {
+				$error = 'Error '.$response->status['code'];
+				
+				if (!empty($response->headers['WWW-Authenticate'])) {
+					$error .= ' ('.$response->headers['WWW-Authenticate'].')';
+				}
 			}
+			return $response->body();
 		}
-		return $response->body();
+		return $response;
 	}
 	
 	/**

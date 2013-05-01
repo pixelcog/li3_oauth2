@@ -288,8 +288,8 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 *                 otherwise.
 	 * @filter
 	 */
-	public static function access($method, $service, $path = null, array $data = array(), &$error = null) {
-		$params = compact('method','service','path','data');
+	public static function access($method, $service, $path = null, array $data = array(), array $options = array(), &$error = null) {
+		$params = compact('method','service','path','data','options');
 		$params['error'] = &$error;
 		
 		return static::_filter(__FUNCTION__, $params, function($self, $params) {
@@ -297,11 +297,12 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			$method = $params['method'];
 			$path = $params['path'];
 			$data = $params['data'];
+			$options = $params['options'];
 			
 			if (!$cache = $self::_refresh($service, $params['error'], 300)) {
 				return false;
 			}
-			return $self::adapter($service)->access($method, $cache['token'], $path, $data, $params['error']);
+			return $self::adapter($service)->access($method, $cache['token'], $path, $data, $options, $params['error']);
 		});
 	}
 
