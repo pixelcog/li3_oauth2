@@ -20,20 +20,12 @@ class OAuthService extends \lithium\net\http\Service {
 	 * OAuth service layer constructor
 	 *
 	 * @param array $config Array with the following parameters:
-	 *
-	 *        [service layer options]
-	 *           - socket: socket class to utilize
-	 *           - scheme: the transfer protocol
-	 *           - host: the oauth domain
-	 *           - proxy: alternate host to send request (still signed with original host)
-	 *           - port: the oauth port
-	 *           - path: the oauth base path
-	 *           - base: a base url string to be parsed and formatted into the above schema
-	 *
-	 *        [common paths]
-	 *           - request_token: path to request token url
-	 *           - access_token: path to access token url
-	 *           - authorize: path to authorize  url
+	 *        - socket: socket class to utilize
+	 *        - scheme: the transfer protocol
+	 *        - host: the oauth domain
+	 *        - proxy: alternate host to send request (still signed with original host)
+	 *        - port: the oauth port
+	 *        - path: the oauth base path
 	 */
 	public function __construct($config = array()) {
 		$defaults = array(
@@ -43,71 +35,52 @@ class OAuthService extends \lithium\net\http\Service {
 			'proxy'  => false,
 			'port'   => 80,
 			'path'   => '',
-			'query'  => null,
-			'request_token' => '/oauth/get_request_token',
-			'access_token'  => '/oauth/get_token',
-			'authorize'     => '/oauth/request_auth'
+			'query'  => array()
 		);
-		$config = $this->_parseUrl($config) + $defaults;
+		parent::__construct($config + $defaults);
 		
-		if (!empty($config['base'])) {
-			$config = $this->_parseUrl($config['base']) + $config;
-		}
-		parent::__construct($config);
+		$this->_responseTypes += array(
+			'token' => function($response) {
+				$code = $response->status['code'];
+				$data = $body = $response->body();
+				if (!is_array($body)) {
+					parse_str($body, $data);	
+				}
+				if (!empty($response->headers['WWW-Authenticate'])) {
+					preg_match('/OAuth ([^\s]+)/s', $response->headers['WWW-Authenticate'], $match);
+					if (!empty($match[1])) {
+						$head = array();
+						parse_str($match[1], $head);
+						$data += $head;
+					}
+				}
+				return compact('code','data');
+			}
+		);
 	}
 
 	/**
-	 * Returns specified config parameter if it exists, null otherwise.  If no key provided
-	 * returns the full config array.
+	 * Instantiates a request object (usually an instance of `http\Request`) and tests its
+	 * properties based on the request type and data to be sent.
 	 *
-	 * @param string $key eg `oauth_consumer_key`
-	 * @return mixed Value corresponding to $key, config array, or null.
+	 * @param string $method The HTTP method of the request, i.e. `'GET'`, `'HEAD'`, `'OPTIONS'`,
+	 *        etc. Can be passed in upper- or lower-case.
+	 * @param string $path The
+	 * @param string $data
+	 * @param string $options
+	 * @return object Returns an instance of `http\Request`, configured with an HTTP method, query
+	 *         string or POST/PUT/PATCH data, and URL.
 	 */
-	public function config($key = null) {
-		if ($key === null) {
-			return $this->_config;
-		}
-		if (isset($this->_config[$key])) {
-			return $this->_config[$key];
-		}
-		return null;
-	}
-
-	/**
-	 * Send request with the given options and data. OAuth data is specified in options.
-	 *
-	 * @param string $method `GET`, `POST`, `PUT`, `DELETE`, `HEAD`, etc.
-	 * @param string $path A full url or a path relative to the configured request settings.
-	 * @param array $data Data to be encoded for the request.
-	 * @param array $options Parameters to override `$_config` and specify additional options:
-	 *              - oauth: authorization parameters to be sent with the request
-	 *              - sign: key with which to sign the request
-	 *              - return: how to format the return (token, body, or response)
-	 *              - headers : send oauth parameters in the header. (default: true)
-	 *              - realm : the realm to authenticate. (default: app directory name)
-	 * @return mixed Returns response object, response body, or parsed oauth parameters depending
-	 *               on the `return` parameter.
-	 */
-	public function send($method, $path = null, $data = array(), array $options = array()) {
+	protected function _request($method, $path, $data, $options) {
 		$defaults = array(
-			'oauth' => array(),
 			'sign' => false,
-			'return' => 'body',
+			'oauth' => array(),
 			'headers' => true,
 			'realm' => basename(LITHIUM_APP_PATH)
 		);
 		$options += $defaults + $this->_config;
 		$oauth = (array) $options['oauth'];
 		ksort($oauth);
-		
-		// break down path into components if necessary, and merge them with our options
-		$request = $this->_parseUrl($this->config($path) ?: $path);
-		$path = $request['path'];
-		if ($request['path'][0] !== '/' && empty($request['host'])) {
-			$path = $options['path'] . $path;
-		}
-		$request['path'] = null;
-		$options = $request + $options;
 		
 		// append extra query parameters to our data
 		$query = $options['query'];
@@ -137,25 +110,8 @@ class OAuthService extends \lithium\net\http\Service {
 			$oauth = array();
 		}
 		
-		// send our request and get a response
 		$options['host'] = $options['proxy'] ?: $options['host'];
-		$response = parent::send($method, $path, $oauth + $data, $options);
-		
-		// format and return the response
-		if ($response && $options['return'] == 'token') {
-			$code = $response->status['code'];
-			$body = array();
-			parse_str($response->body(), $data);
-			if (!empty($response->headers['WWW-Authenticate'])) {
-				preg_match('/OAuth ([^\s]+)/s', $response->headers['WWW-Authenticate'], $match);
-				if (!empty($match[1])) {
-					parse_str($match[1], $head);
-					$data += $head;
-				}
-			}
-			return compact('code','data');
-		}
-		return $response;
+		return parent::_request($method, $path, $data + $oauth, $options);
 	}
 
 	/**
@@ -171,11 +127,10 @@ class OAuthService extends \lithium\net\http\Service {
 		$options += $this->_config;
 		
 		// compile our path
-		$request = $this->_parseUrl($this->config($path) ?: $path);
-		if ($request['path'][0] !== '/' && empty($request['host'])) {
-			$request['path'] = $options['path'] . $request['path'];
+		if ($path[0] !== '/' && empty($options['host'])) {
+			$path = $options['path'] . $path;
 		}
-		$options = $request + $options;
+		$options = compact('path') + $options;
 		
 		// compile our query string
 		$query = $options['query'];
@@ -206,59 +161,6 @@ class OAuthService extends \lithium\net\http\Service {
 		}
 		
 		return String::insert("{:scheme}://{:authority}{:host}{:port}{:path}{:query}", $options);
-	}
-	
-	/**
-	 * Break a url down to its components and normalize them for our config schema
-	 *
-	 * @param mixed $url A string representing a url or an array with the following fields:	 
-	 *              - scheme: optional
-	 *              - host: optional
-	 *              - port: optional
-	 *              - username: (or 'pass') optional
-	 *              - password: (or 'user') optional
-	 *              - path: required
-	 */
-	private function _parseUrl($url) {
-		if (!is_array($url)) {
-			$url = parse_url($url);
-		}
-		
-		// normalize ports where possible
-		$ports = array(20=>'ftp', 21=>'ftp', 22=>'ssh', 80=>'http', 443=>'https');
-		
-		if (!isset($url['scheme']) && !empty($url['port'])) {
-			if (isset($ports[$url['port']])) {
-				$url['scheme'] = $ports[$url['port']];
-			}
-			else {
-				$url['scheme'] = 'http';
-			}
-		}
-		elseif (!isset($url['port']) && !empty($url['scheme'])) {
-			$schemes = array_flip($ports);
-			if (isset($schemes[$url['scheme']])) {
-				$url['port'] = $schemes[$url['scheme']];
-			}
-			else {
-				$url['port'] = 80;
-			}
-		}
-		
-		// normalize http auth keys
-		$auth = array('username'=>'', 'user'=>'', 'password'=>'', 'pass'=>'');
-		
-		if (array_intersect_key($url,$auth)) {
-			$url += $auth;
-			
-			$url['username'] = $url['username'] ?: $url['user'] ?: '';
-			$url['password'] = $url['password'] ?: $url['pass'] ?: '';
-			
-			unset($url['user'],$url['pass']);
-		}
-		
-		unset($url['fragment']);
-		return $url;
 	}
 
 	/**

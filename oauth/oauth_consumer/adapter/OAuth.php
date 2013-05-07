@@ -68,8 +68,33 @@ class OAuth extends \lithium\core\Object {
 	 * @return void
 	 */
 	public function __construct(array $config = array()) {
-		parent::__construct($config + $this->_defaults);
+		list($path, $config) = $this->_parseUrl($config);
+		$config += compact('path') + $this->_defaults;
+		
+		if (!empty($config['base'])) {
+			list($path, $base) = $this->_parseUrl($config['base']);
+			$config = compact('path') + $base + $config;
+		}
+		parent::__construct($config);
+
 		$this->_service = new $this->_classes['service']($this->_config);
+	}
+
+	/**
+	 * Returns specified config parameter if it exists, null otherwise.  If no key provided
+	 * returns the full config array.
+	 *
+	 * @param string $key eg `oauth_consumer_key`
+	 * @return mixed Value corresponding to $key, config array, or null.
+	 */
+	public function config($key = null) {
+		if ($key === null) {
+			return $this->_config;
+		}
+		if (isset($this->_config[$key])) {
+			return $this->_config[$key];
+		}
+		return null;
 	}
 	
 	/**
@@ -140,7 +165,8 @@ class OAuth extends \lithium\core\Object {
 		$sign = rawurlencode($this->_config['consumer_secret']) . '&';
 		$return = 'token';
 		
-		$response = $this->_service->post('request_token', array(), compact('oauth', 'sign', 'return'));
+		list($path, $options) = $this->_parseUrl('request_token');
+		$response = $this->_service->post($path, array(), compact('oauth', 'sign', 'return') + $options);
 		
 		if (empty($response['data']['oauth_token'])) {
 			$error = 'Unknown Error';
@@ -163,7 +189,8 @@ class OAuth extends \lithium\core\Object {
 			return $token['xoauth_request_auth_url'];
 		}
 		
-		return $this->_service->url('authorize', array('oauth_token' => $token['oauth_token']));
+		list($path, $options) = $this->_parseUrl('authorize');
+		return $this->_service->url($path, array('oauth_token' => $token['oauth_token']), $options);
 	}
 	
 	/**
@@ -202,7 +229,8 @@ class OAuth extends \lithium\core\Object {
 			rawurlencode($request['oauth_token_secret']);
 		$return = 'token';
 		
-		$response = $this->_service->post('access_token', array(), compact('oauth', 'sign', 'return'));
+		list($path, $options) = $this->_parseUrl('access_token');
+		$response = $this->_service->post($path, array(), compact('oauth', 'sign', 'return') + $options);
 		
 		if (empty($response['data']['oauth_token'])) {
 			$error = 'Unknown Error';
@@ -271,7 +299,8 @@ class OAuth extends \lithium\core\Object {
 			rawurlencode($request['oauth_token_secret']);
 		$return = 'token';
 		
-		$response = $this->_service->post('access_token', array(), compact('oauth', 'sign', 'return'));
+		list($path, $options) = $this->_parseUrl('access_token');
+		$response = $this->_service->post($path, array(), compact('oauth', 'sign', 'return') + $options);
 		
 		if (empty($response['data']['oauth_token'])) {
 			$error = 'Unknown Error';
@@ -336,7 +365,8 @@ class OAuth extends \lithium\core\Object {
 			rawurlencode($token['oauth_token_secret']);
 		$return = 'response';
 		
-		$response = $this->_service->send($method, $path, $data, compact('oauth', 'sign', 'return') + $options);
+		list($path, $extra) = $this->_parseUrl($path);
+		$response = $this->_service->send($method, $path, $data, compact('oauth', 'sign', 'return') + $extra + $options);
 		
 		if ($response instanceof \lithium\net\http\Message) {
 			if ($response->status['code'] != 200) {
@@ -349,6 +379,61 @@ class OAuth extends \lithium\core\Object {
 			return $response->body();
 		}
 		return $response;
+	}
+	
+	/**
+	 * Break a url down to its components and normalize them for our config schema
+	 *
+	 * @param mixed $url A string representing a url or an array with the following fields:	 
+	 *              - scheme: optional
+	 *              - host: optional
+	 *              - port: optional
+	 *              - username: (or 'pass') optional
+	 *              - password: (or 'user') optional
+	 *              - path: required
+	 */
+	private function _parseUrl($url) {
+		if (!is_array($url)) {
+			$url = parse_url($this->config($url) ?: $url);
+		}
+		
+		// normalize ports where possible
+		$ports = array(20=>'ftp', 21=>'ftp', 22=>'ssh', 80=>'http', 443=>'https');
+		
+		if (!isset($url['scheme']) && !empty($url['port'])) {
+			if (isset($ports[$url['port']])) {
+				$url['scheme'] = $ports[$url['port']];
+			}
+			else {
+				$url['scheme'] = 'http';
+			}
+		}
+		elseif (!isset($url['port']) && !empty($url['scheme'])) {
+			$schemes = array_flip($ports);
+			if (isset($schemes[$url['scheme']])) {
+				$url['port'] = $schemes[$url['scheme']];
+			}
+			else {
+				$url['port'] = 80;
+			}
+		}
+		
+		// normalize http auth keys
+		$auth = array('username'=>'', 'user'=>'', 'password'=>'', 'pass'=>'');
+		
+		if (array_intersect_key($url,$auth)) {
+			$url += $auth;
+			
+			$url['username'] = $url['username'] ?: $url['user'] ?: '';
+			$url['password'] = $url['password'] ?: $url['pass'] ?: '';
+			
+			unset($url['user'],$url['pass']);
+		}
+		
+		$path = isset($url['path']) ? $url['path'] : '';
+		unset($url['fragment']);
+		unset($url['path']);
+		return array($path, $url);
 	}
 	
 	/**
