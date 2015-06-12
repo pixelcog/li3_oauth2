@@ -338,12 +338,14 @@ class OAuth extends \lithium\core\Object {
 	}
 
 	/**
-	 * Refresh an access token which is past or near expiration.  Assumes the appropriate measures
-	 * have been taken to block other access the token resource if race conditions are a concern.
+	 * Perform a generic HTTP request using OAuth access credentials.
 	 *
-	 * @param array $token Reference to access token data to be updated as necessary.
-	 * @param string $error Optional reference to variable in which to place error information.
-	 * @return boolean Returns `true` if a the processes was successful, `false` otherwise.
+	 * @param string $method
+	 * @param array $token
+	 * @param string $path
+	 * @param array $data
+	 * @param array $options
+	 * @param mixed $error Variable reference in which to store an error message when appropriate
 	 */
 	public function access($method, array $token, $path = null, array $data = array(), array $options = array(), &$error = null) {
 		$defaults = array('oauth_token' => '', 'oauth_token_secret' => '');
