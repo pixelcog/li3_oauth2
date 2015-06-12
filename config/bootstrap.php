@@ -2,7 +2,7 @@
 /**
  * Lithium OAuth Plugin
  *
- * @copyright     Copyright 2012, PixelCog Inc. (http://pixelcog.com)
+ * @copyright     Copyright 2015, PixelCog Inc. (http://pixelcog.com)
  * @license       http://opensource.org/licenses/bsd-license.php The BSD License
  */
 
