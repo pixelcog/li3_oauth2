@@ -365,12 +365,18 @@ class OAuth extends \lithium\core\Object {
 		$sign =
 			rawurlencode($this->_config['consumer_secret']) . '&' .
 			rawurlencode($token['oauth_token_secret']);
-		$return = 'response';
+
+		// override return method so we can correctly catch errors
+		$options += array('return' => 'body');
+		$return = $options['return'];
+		if ($options['return'] == 'body') {
+			$options['return'] = 'response';
+		}
 
 		list($path, $extra) = $this->_parseUrl($path);
-		$response = $this->_service->send($method, $path, $data, compact('oauth', 'sign', 'return') + $extra + $options);
+		$response = $this->_service->send($method, $path, $data, compact('oauth', 'sign') + $extra + $options);
 
-		if ($response instanceof \lithium\net\http\Message) {
+		if ($return == 'body' && $response instanceof \lithium\net\http\Response) {
 			if ($response->status['code'] != 200) {
 				$error = 'Error '.$response->status['code'];
 

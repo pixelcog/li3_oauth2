@@ -60,6 +60,26 @@ class OAuthService extends \lithium\net\http\Service {
 	}
 
 	/**
+	 * Send request and return response data.  Optionally generate and simply return the Request
+	 * object by passing $options ['return' => 'request']
+	 *
+	 * @see li3_oauth2\extensions\net\http\OAuthService::_request()
+	 * @param string $method
+	 * @param string $path
+	 * @param array $data the parameters for the request. For GET/DELETE this is the query string
+	 *        for POST/PUT this is the body
+	 * @param array $options passed to request and socket
+	 * @return string
+	 */
+	public function send($method, $path = null, $data = array(), array $options = array()) {
+		$options += array('return' => 'body');
+		if ($options['return'] == 'request') {
+			return $this->_request($method, $path, $data, $options);
+		}
+		return parent::send($method, $path, $data, $options);
+	}
+
+	/**
 	 * Instantiates a request object (usually an instance of `http\Request`) and tests its
 	 * properties based on the request type and data to be sent.
 	 *
