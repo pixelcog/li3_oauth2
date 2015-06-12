@@ -19,7 +19,7 @@ use li3_oauth2\extensions\storage\TokenCache;
  */
 
 class OAuthController extends \lithium\action\Controller {
-	
+
 	/**
 	 * Check if we have authorization to the requested resources for a given OAuthConsumer adapter
 	 * and attempt to authorize if we do not.
@@ -30,13 +30,13 @@ class OAuthController extends \lithium\action\Controller {
 	public function index() {
 		$service = $this->_getService();
 		$request = $this->_parseRequest();
-		
+
 		if ( OAuthConsumer::hasAccess($service, $request) ) {
 			return $this->_success($request);
 		}
 		return $this->authorize();
 	}
-	
+
 	/**
 	 * Attempt to request access to remote resources for a given OAuthConsumer adapter
 	 * configuration.
@@ -57,7 +57,7 @@ class OAuthController extends \lithium\action\Controller {
 		// fix for bug in to() function...
 		list($request['callback']) = explode('?',$request['callback']);
 		$error = null;
-		
+
 		if (true === $url = OAuthConsumer::request($service, $request, $error)) {
 			return $this->_success($request);
 		}
@@ -66,7 +66,7 @@ class OAuthController extends \lithium\action\Controller {
 		}
 		return $this->_failure($error, $request);
 	}
-	
+
 	/**
 	 * Attempt to finalize remote authorization process following approval and redirect from the
 	 * authorization server via the user-agent.
@@ -78,13 +78,13 @@ class OAuthController extends \lithium\action\Controller {
 		$response = $this->request->query;
 		$request = array();
 		$error = null;
-		
+
 		if (OAuthConsumer::verify($service, $response, $error, $request)) {
 			return $this->_success($request);
 		}
 		return $this->_failure($error, $request);
 	}
-	
+
 	/**
 	 * Attempt to refresh access to remote resources for a given OAuthConsumer adapter
 	 * configuration.
@@ -98,13 +98,13 @@ class OAuthController extends \lithium\action\Controller {
 		$service = $this->_getService();
 		$request = $this->_parseRequest();
 		$error = null;
-		
+
 		if (OAuthConsumer::refresh($service, $error)) {
 			return $this->_success($request);
 		}
 		return $this->_failure($error, $request);
 	}
-	
+
 	/**
 	 * Abdicate authorization to remote resources for a given OAuthConsumer adapter configuration.
 	 *
@@ -114,42 +114,42 @@ class OAuthController extends \lithium\action\Controller {
 		$service = $this->_getService();
 		$request = $this->_parseRequest();
 		$error = null;
-		
+
 		if (OAuthConsumer::release($service, $error)) {
 			return $this->_success($request);
 		}
 		return $this->_failure($error, $request);
 	}
-	
+
 	/**
 	 * Based on the request and error message, display the appropriate error output.
 	 *
 	 */
 	private function _failure($message, array $request = array()) {
-		
+
 		$return = null;
-		
+
 		if (!empty($request['return'])) {
 			$return = $request['return'];
 		}
-		
+
 		$this->set(compact('message','return'));
 		return $this->render(array('template' => 'failure'));
 	}
-	
+
 	/**
 	 * Based on the request data, display an appropriate success output.
 	 *
 	 */
 	private function _success(array $request = array()) {
-		
+
 		if (!empty($request['return'])) {
 			return $this->redirect($request['return']);
 		}
-		
+
 		return $this->render(array('template' => 'success'));
 	}
-	
+
 	/**
 	 * Parse the input.
 	 *
@@ -160,11 +160,11 @@ class OAuthController extends \lithium\action\Controller {
 			'return' => 'referer'
 		);
 		$request = $this->request->query + $defaults;
-		
+
 		// use implicitly defined return url?
 		if ($request['return'] == 'referer') {
 			$referer = parse_url($this->request->referer('/'));
-			
+
 			if (empty($referer['host']) || $referer['host'] == $this->request->env('HTTP_HOST')) {
 				$request['return'] = $referer['path'];
 				if (!empty($referer['query'])) {
@@ -175,10 +175,10 @@ class OAuthController extends \lithium\action\Controller {
 				}
 			}
 		}
-		
+
 		return $request;
 	}
-	
+
 	/**
 	 * Parse the service parameter.
 	 *

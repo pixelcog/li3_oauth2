@@ -68,11 +68,11 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	public static function hasAccess($service, array $request = array(), &$error = null) {
 		$params = compact('service','request');
 		$params['error'] = &$error;
-		
+
 		return static::_filter(__FUNCTION__, $params, function($self, $params) {
 			$service = $params['service'];
 			$request = $params['request'];
-			
+
 			if (!$cache = $self::_refresh($service, $params['error'], 300)) {
 				return false;
 			}
@@ -107,11 +107,11 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	public static function request($service, array $request = array(), &$error = null) {
 		$params = compact('service','request');
 		$params['error'] = &$error;
-		
+
 		return static::_filter(__FUNCTION__, $params, function($self, $params) {
 			$service = $params['service'];
 			$request = $params['request'];
-			
+
 			if (!is_array($config = $self::config($service))) {
 				return false;
 			}
@@ -120,24 +120,24 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 				'callback' => null
 			);
 			$request += $defaults;
-			
+
 			if ($nonce = $request['nonce']) {
 				$request['callback'] = $self::invokeMethod('_addUrlParams', array($request['callback'], compact('nonce')));
 			}
 			$token = array();
 			$error = null;
-			
+
 			$authorized = true === ($response = $self::adapter($service)->request($token, $request, $error));
-			
+
 			$cache = compact('request','authorized','token','error');
 			$key = $self::invokeMethod('_key', array($service, 'temp' . $nonce));
 			TokenCache::write($config['temp_cache'], $key, $cache, '+1 hour');
-			
+
 			if ($authorized) {
 				$key = $self::invokeMethod('_key', array($service));
 				TokenCache::write($config['token_cache'], $key, $cache, '+2 Years');
 			}
-			
+
 			$params['error'] = $error;
 			return $response;
 		});
@@ -162,11 +162,11 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 		$params = compact('service','response');
 		$params['error'] = &$error;
 		$params['request'] = &$request;
-		
+
 		return static::_filter(__FUNCTION__, $params, function($self, $params) {
 			$service = $params['service'];
 			$response = $params['response'];
-			
+
 			if (!is_array($config = $self::config($service))) {
 				return false;
 			}
@@ -175,10 +175,10 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			if (!empty($response['nonce'])) {
 				$nonce = $response['nonce'];
 			}
-			
+
 			$key = $self::invokeMethod('_key', array($service, 'temp' . $nonce));
 			$cache = TokenCache::read($config['temp_cache'], $key);
-			
+
 			// does the input correspond to an existing request?
 			if (!$cache || $cache['authorized'] && array_diff($response, $cache['response'])) {
 				$params['error'] = "Unable to locate authorization request";
@@ -186,17 +186,17 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 			}
 			$token = $cache['token'];
 			$request = $cache['request'];
-			
+
 			// if user likely hit refresh accidentally, just replay the output.
 			if ($cache['authorized']) {
 				$params['request'] = $request;
 				return true;
 			}
 			$authorized = $self::adapter($service)->verify($token, $response, $error);
-			
+
 			$cache = compact('request', 'response', 'authorized', 'token', 'error');
 			TokenCache::write($config['temp_cache'], $key, $cache, '+1 hour');
-			
+
 			if ($authorized) {
 				$key = $self::invokeMethod('_key', array($service));
 				TokenCache::write($config['token_cache'], $key, $cache, '+2 Years');
@@ -220,11 +220,11 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 		$params = array('service' => $service, 'error' => &$error);
 		return static::_filter(__FUNCTION__, $params, function($self, $params) {
 			$service = $params['service'];
-			
+
 			if (!is_array($config = $self::config($service))) {
 				return null;
 			}
-			
+
 			$key = $self::invokeMethod('_key', array($service));
 			if ((!$cache = TokenCache::read($config['token_cache'], $key)) || !$cache['authorized']) {
 				$params['error'] = "Unable to locate valid access credentials.";
@@ -263,18 +263,18 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 		$params = array('service' => $service, 'error' => &$error);
 		return static::_filter(__FUNCTION__, $params, function($self, $params) {
 			$service = $params['service'];
-			
+
 			if (!is_array($config = $self::config($service))) {
 				return null;
 			}
-			
+
 			$key = $self::invokeMethod('_key', array($service));
 			if ((!$cache = TokenCache::read($config['token_cache'], $key)) || !$cache['authorized']) {
 				return true;
 			}
 			$cache['authorized'] = false;
 			TokenCache::write($config['token_cache'], $key, $cache, '+2 Years');
-			
+
 			return $self::adapter($service)->release($cache['token'], $params['error']);
 		});
 	}
@@ -291,14 +291,14 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	public static function access($method, $service, $path = null, array $data = array(), array $options = array(), &$error = null) {
 		$params = compact('method','service','path','data','options');
 		$params['error'] = &$error;
-		
+
 		return static::_filter(__FUNCTION__, $params, function($self, $params) {
 			$service = $params['service'];
 			$method = $params['method'];
 			$path = $params['path'];
 			$data = $params['data'];
 			$options = $params['options'];
-			
+
 			if (!$cache = $self::_refresh($service, $params['error'], 300)) {
 				return false;
 			}
@@ -343,22 +343,22 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 		$attempt = 0;
 		$adapter = $config['token_cache'];
 		$key = self::_key($service);
-		
+
 		if (!($cache = TokenCache::read($adapter, $key)) || !$cache['authorized']) {
 			$error = "Unable to locate valid access credentials.";
 			return false;
 		}
-		
+
 		$expires = static::adapter($service)->expires($cache['token']);
 		while ($expires && (!$threshold || time() + $threshold > $expires)) {
-			
+
 			if ($attempt++ > 5) {
 				$error = "Unable to refresh token.";
 				return false;
 			}
-			
+
 			if ($cache = TokenCache::read($adapter, $key, array('block' => true))){
-				
+
 				if (!$cache['authorized']) {
 					$error = $cache['error'];
 					return false;
@@ -377,7 +377,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 				return false;
 			}
 		}
-		
+
 		return $cache;
 	}
 
@@ -401,7 +401,7 @@ class OAuthConsumer extends \lithium\core\Adaptable {
 	 */
 	protected static function _addUrlParams($url, $params) {
 		$params = http_build_query((array) $params);
-		
+
 		if (($pos = strpos($url, '?')) === false) {
 			$url .= '?' . $params;
 		}

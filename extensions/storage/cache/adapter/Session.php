@@ -30,7 +30,7 @@ class Session extends \lithium\core\Object {
 	protected static $_classes = array(
 		'session' => 'lithium\storage\Session'
 	);
-	
+
 	/**
 	 * Class constructor.
 	 *
@@ -65,10 +65,10 @@ class Session extends \lithium\core\Object {
 		$session = $this->_config['session'];
 		$options = $this->_config['options'];
 		$expiry = $expiry ?: $this->_config['expiry'];
-		
+
 		return function($self, $params) use ($session, $options, $expiry) {
 			$expiry = strtotime($expiry);
-			
+
 			return $session::write($params['key'],array(
 				'expiry' => $expiry,
 				'data' => $params['data'],
@@ -87,18 +87,18 @@ class Session extends \lithium\core\Object {
 		$options = $this->_config['options'];
 
 		return function($self, $params) use ($session, $options) {
-			
+
 			$cache = $session::read($params['key'], $options);
-			
+
 			if (!$cache || !isset($cache['data'])) {
 				return false;
 			}
-			
+
 			if (!empty($cache['expiry']) && $cache['expiry'] < time()) {
 				$session::delete($params['key'], $options);
 				return false;
 			}
-			
+
 			return $cache['data'];
 		};
 	}

@@ -17,7 +17,7 @@ namespace li3_oauth2\oauth;
  * @see lithium\core\Adaptable
  */
 class OAuthProvider extends \lithium\core\Adaptable {
-	
+
 }
 
 ?>

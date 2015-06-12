@@ -59,7 +59,7 @@ class Model extends \lithium\core\Object {
 	 * @var array
 	 */
 	protected $_autoConfig = array('model', 'fields');
-	
+
 	/**
 	 * Class constructor.
 	 *
@@ -97,9 +97,9 @@ class Model extends \lithium\core\Object {
 			}
 		}
 		$this->_fields += array(
-			'key' => '_id', 'data' => 'data', 
+			'key' => '_id', 'data' => 'data',
 			'lock' => 'lock', 'expiry' => 'expiry');
-			
+
 		if (!$model = Libraries::locate('models', $this->_model)) {
 			throw new ClassNotFoundException('Model class `'.$this->_model.'` not found.');
 		}
@@ -120,11 +120,11 @@ class Model extends \lithium\core\Object {
 		$fields = $this->_fields;
 		$locks = $this->_locks;
 		$expiry = $expiry ?: $this->_config['expiry'];
-		
+
 		return function($self, $params) use ($model, $fields, $expiry, $locks) {
 			$expiry = strtotime($expiry);
 			$conditions = array($fields['key'] => $params['key']);
-			
+
 			if (!empty($locks[$params['key']])) {
 				$cache = $locks[$params['key']];
 			}
@@ -148,10 +148,10 @@ class Model extends \lithium\core\Object {
 		$model = $this->_model;
 		$fields = $this->_fields;
 		$locks = &$this->_locks;
-		
+
 		return function($self, $params) use ($model, $fields, &$locks) {
 			$key = $params['key'];
-			
+
 			if (!empty($locks[$key])) {
 				$cache = $locks[$key];
 			}
@@ -159,17 +159,17 @@ class Model extends \lithium\core\Object {
 				$conditions = array($fields['key'] => $params['key']);
 				$cache = $model::first(compact('conditions'));
 			}
-			
+
 			if (!$cache || !isset($cache['data'])) {
 				return false;
 			}
-			
+
 			if (!empty($cache['expiry']) && $cache['expiry'] < time()) {
 				$cache->delete();
 				unset($locks[$key]);
 				return false;
 			}
-			
+
 			$cache = $cache->to('array');
 			return $cache['data'];
 		};

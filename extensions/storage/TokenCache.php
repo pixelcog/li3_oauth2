@@ -62,7 +62,7 @@ class TokenCache extends \lithium\storage\Cache {
 			'unblock' => true
 		);
 		$options += $defaults;
-		
+
 		if ($options['block']) {
 			if(!self::block($name, $key, $options['wait'])) {
 				return false;
@@ -72,7 +72,7 @@ class TokenCache extends \lithium\storage\Cache {
 			self::wait($name, $key);
 		}
 		$result = parent::write($name, $key, $data, $expiry, $options);
-		
+
 		if ($options['unblock']) {
 			self::unblock($name, $key);
 		}
@@ -97,7 +97,7 @@ class TokenCache extends \lithium\storage\Cache {
 			'block' => false
 		);
 		$options += $defaults;
-		
+
 		if ($options['block']) {
 			if(!self::block($name, $key, $options['wait'])) {
 				return false;
@@ -124,7 +124,7 @@ class TokenCache extends \lithium\storage\Cache {
 			'block' => true
 		);
 		$options += $defaults;
-		
+
 		if ($options['block']) {
 			if(!self::block($name, $key, $options['wait'])) {
 				return false;
@@ -134,13 +134,13 @@ class TokenCache extends \lithium\storage\Cache {
 			self::wait($name, $key);
 		}
 		$result = parent::delete($name, $key, $options);
-		
+
 		if ($options['block']) {
 			self::unblock($name, $key);
 		}
 		return $result;
 	}
-	
+
 	/**
 	 * Obtain an exclusive lock to a particular cache key.
 	 *
@@ -160,7 +160,7 @@ class TokenCache extends \lithium\storage\Cache {
 		}
 		return self::$_locks[$name][$key] = $adapter->block($name, $key, $wait);
 	}
-	
+
 	/**
 	 * Release an exclusive lock to a particular cache key.
 	 *
@@ -180,7 +180,7 @@ class TokenCache extends \lithium\storage\Cache {
 		self::$_locks[$name][$key] = false;
 		return $adapter->unblock($name, $key);
 	}
-	
+
 	/**
 	 * Wait for the lock to a particular cache key to be released.
 	 *
@@ -199,7 +199,7 @@ class TokenCache extends \lithium\storage\Cache {
 		}
 		return $adapter->wait($name, $key);
 	}
-	
+
 	/**
 	 * Called when an adapter configuration is first accessed.
 	 *

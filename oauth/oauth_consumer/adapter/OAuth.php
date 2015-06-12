@@ -70,7 +70,7 @@ class OAuth extends \lithium\core\Object {
 	public function __construct(array $config = array()) {
 		list($path, $config) = $this->_parseUrl($config);
 		$config += compact('path') + $this->_defaults;
-		
+
 		if (!empty($config['base'])) {
 			list($path, $base) = $this->_parseUrl($config['base']);
 			$config = compact('path') + $base + $config;
@@ -96,7 +96,7 @@ class OAuth extends \lithium\core\Object {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Check whether token has remote access conforming to requested authroization parameters.
 	 *
@@ -118,20 +118,20 @@ class OAuth extends \lithium\core\Object {
 			'auth_expires' => ''
 		);
 		$token += $defaults;
-		
+
 		if (!$token['oauth_token'] || !$token['oauth_token_secret']) {
 			$error = 'Missing OAuth token or secret.';
 			return false;
 		}
-		
+
 		if ($token['auth_expires'] && time() > $token['auth_expires']) {
 			$error = 'The authorization has expired. ('.$token['auth_expires'].')';
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	/**
 	 * Request access from a remote authorization server.
 	 *
@@ -150,7 +150,7 @@ class OAuth extends \lithium\core\Object {
 		$defaults = array('nonce' => '', 'callback' => '', 'lang' => '');
 		$request += $defaults;
 		$error = null;
-		
+
 		$oauth = array(
 			'oauth_callback' => $request['callback'],
 			'oauth_consumer_key' => $this->_config['consumer_key'],
@@ -161,13 +161,13 @@ class OAuth extends \lithium\core\Object {
 			'xoauth_lang_pref' => $request['lang']
 		);
 		$oauth = array_filter($oauth);
-		
+
 		$sign = rawurlencode($this->_config['consumer_secret']) . '&';
 		$return = 'token';
-		
+
 		list($path, $options) = $this->_parseUrl('request_token');
 		$response = $this->_service->post($path, array(), compact('oauth', 'sign', 'return') + $options);
-		
+
 		if (empty($response['data']['oauth_token'])) {
 			$error = 'Unknown Error';
 			if ($response['code'] != 200) {
@@ -178,21 +178,21 @@ class OAuth extends \lithium\core\Object {
 			}
 			return false;
 		}
-		
+
 		$token = $response['data'];
-		
+
 		if (!empty($token['oauth_expires_in'])) {
 			$token['expires'] = $this->_absoluteTime($token['oauth_expires_in']);
 		}
-		
+
 		if (!empty($token['xoauth_request_auth_url'])) {
 			return $token['xoauth_request_auth_url'];
 		}
-		
+
 		list($path, $options) = $this->_parseUrl('authorize');
 		return $this->_service->url($path, array('oauth_token' => $token['oauth_token']), $options);
 	}
-	
+
 	/**
 	 * Exchange request token data for an access token.
 	 *
@@ -207,12 +207,12 @@ class OAuth extends \lithium\core\Object {
 		$response += $defaults;
 		$request = $token + $defaults;
 		$error = null;
-		
+
 		if ($response['oauth_token'] && $response['oauth_token'] != $token['oauth_token']) {
 			$error = "Mismatching request token.";
 			return false;
 		}
-		
+
 		$oauth = array(
 			'oauth_consumer_key' => $this->_config['consumer_key'],
 			'oauth_nonce' => sha1(time() . mt_rand()),
@@ -223,15 +223,15 @@ class OAuth extends \lithium\core\Object {
 			'oauth_version' => '1.0'
 		);
 		$oauth = array_filter($oauth);
-		
+
 		$sign =
 			rawurlencode($this->_config['consumer_secret']) . '&' .
 			rawurlencode($request['oauth_token_secret']);
 		$return = 'token';
-		
+
 		list($path, $options) = $this->_parseUrl('access_token');
 		$response = $this->_service->post($path, array(), compact('oauth', 'sign', 'return') + $options);
-		
+
 		if (empty($response['data']['oauth_token'])) {
 			$error = 'Unknown Error';
 			if ($response['code'] != 200) {
@@ -242,16 +242,16 @@ class OAuth extends \lithium\core\Object {
 			}
 			return false;
 		}
-		
+
 		$token = $response['data'];
-		
+
 		if (!empty($token['oauth_expires_in'])) {
 			$token['expires'] = $this->_absoluteTime($token['oauth_expires_in']);
 		}
 		if (!empty($token['oauth_authorization_expires_in'])) {
 			$token['auth_expires'] = $this->_absoluteTime($token['oauth_authorization_expires_in']);
 		}
-		
+
 		return true;
 	}
 
@@ -269,7 +269,7 @@ class OAuth extends \lithium\core\Object {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Refresh an access token which is past or near expiration.  Assumes the appropriate measures
 	 * have been taken to block other access the token resource if race conditions are a concern.
@@ -282,7 +282,7 @@ class OAuth extends \lithium\core\Object {
 		$defaults = array('oauth_token' => '', 'oauth_session_handle' => '', 'oauth_token_secret' => '');
 		$request = $token + $defaults;
 		$error = null;
-		
+
 		$oauth = array(
 			'oauth_consumer_key' => $this->_config['consumer_key'],
 			'oauth_nonce' => sha1(time() . mt_rand()),
@@ -293,15 +293,15 @@ class OAuth extends \lithium\core\Object {
 			'oauth_version' => '1.0'
 		);
 		$oauth = array_filter($oauth);
-		
+
 		$sign =
 			rawurlencode($this->_config['consumer_secret']) . '&' .
 			rawurlencode($request['oauth_token_secret']);
 		$return = 'token';
-		
+
 		list($path, $options) = $this->_parseUrl('access_token');
 		$response = $this->_service->post($path, array(), compact('oauth', 'sign', 'return') + $options);
-		
+
 		if (empty($response['data']['oauth_token'])) {
 			$error = 'Unknown Error';
 			if ($response['code'] != 200) {
@@ -312,19 +312,19 @@ class OAuth extends \lithium\core\Object {
 			}
 			return false;
 		}
-		
+
 		$token = $response['data'];
-		
+
 		if (!empty($token['oauth_expires_in'])) {
 			$token['expires'] = $this->_absoluteTime($token['oauth_expires_in']);
 		}
 		if (!empty($token['oauth_authorization_expires_in'])) {
 			$token['auth_expires'] = $this->_absoluteTime($token['oauth_authorization_expires_in']);
 		}
-		
+
 		return true;
 	}
-	
+
 	/**
 	 * No method for releasing authorization on a given resource exists in the OAuth 1.0 spec.
 	 * Simply return true.
@@ -336,7 +336,7 @@ class OAuth extends \lithium\core\Object {
 	public function release(array &$token, &$error = null) {
 		return true;
 	}
-	
+
 	/**
 	 * Refresh an access token which is past or near expiration.  Assumes the appropriate measures
 	 * have been taken to block other access the token resource if race conditions are a concern.
@@ -349,7 +349,7 @@ class OAuth extends \lithium\core\Object {
 		$defaults = array('oauth_token' => '', 'oauth_token_secret' => '');
 		$token += $defaults;
 		$error = null;
-		
+
 		$oauth = array(
 			'oauth_consumer_key' => $this->_config['consumer_key'],
 			'oauth_nonce' => sha1(time() . mt_rand()),
@@ -359,19 +359,19 @@ class OAuth extends \lithium\core\Object {
 			'oauth_version' => '1.0'
 		);
 		$oauth = array_filter($oauth);
-		
+
 		$sign =
 			rawurlencode($this->_config['consumer_secret']) . '&' .
 			rawurlencode($token['oauth_token_secret']);
 		$return = 'response';
-		
+
 		list($path, $extra) = $this->_parseUrl($path);
 		$response = $this->_service->send($method, $path, $data, compact('oauth', 'sign', 'return') + $extra + $options);
-		
+
 		if ($response instanceof \lithium\net\http\Message) {
 			if ($response->status['code'] != 200) {
 				$error = 'Error '.$response->status['code'];
-				
+
 				if (!empty($response->headers['WWW-Authenticate'])) {
 					$error .= ' ('.$response->headers['WWW-Authenticate'].')';
 				}
@@ -380,11 +380,11 @@ class OAuth extends \lithium\core\Object {
 		}
 		return $response;
 	}
-	
+
 	/**
 	 * Break a url down to its components and normalize them for our config schema
 	 *
-	 * @param mixed $url A string representing a url or an array with the following fields:	 
+	 * @param mixed $url A string representing a url or an array with the following fields:
 	 *              - scheme: optional
 	 *              - host: optional
 	 *              - port: optional
@@ -396,10 +396,10 @@ class OAuth extends \lithium\core\Object {
 		if (!is_array($url)) {
 			$url = parse_url($this->config($url) ?: $url);
 		}
-		
+
 		// normalize ports where possible
 		$ports = array(20=>'ftp', 21=>'ftp', 22=>'ssh', 80=>'http', 443=>'https');
-		
+
 		if (!isset($url['scheme']) && !empty($url['port'])) {
 			if (isset($ports[$url['port']])) {
 				$url['scheme'] = $ports[$url['port']];
@@ -417,25 +417,25 @@ class OAuth extends \lithium\core\Object {
 				$url['port'] = 80;
 			}
 		}
-		
+
 		// normalize http auth keys
 		$auth = array('username'=>'', 'user'=>'', 'password'=>'', 'pass'=>'');
-		
+
 		if (array_intersect_key($url,$auth)) {
 			$url += $auth;
-			
+
 			$url['username'] = $url['username'] ?: $url['user'] ?: '';
 			$url['password'] = $url['password'] ?: $url['pass'] ?: '';
-			
+
 			unset($url['user'],$url['pass']);
 		}
-		
+
 		$path = isset($url['path']) ? $url['path'] : '';
 		unset($url['fragment']);
 		unset($url['path']);
 		return array($path, $url);
 	}
-	
+
 	/**
 	 * Convert a relative time (in seconds) to an absolute timestamp and prevent it from overflowing
 	 * when assigned to a 32-bit integer.
@@ -445,7 +445,7 @@ class OAuth extends \lithium\core\Object {
 	protected function _absoluteTime($time) {
 		$maxInt = 2147483646;
 		$now = time();
-		
+
 		if ((integer) $time < $maxInt - $now) {
 			return $now + (integer) $time;
 		}

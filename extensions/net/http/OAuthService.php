@@ -38,13 +38,13 @@ class OAuthService extends \lithium\net\http\Service {
 			'query'  => array()
 		);
 		parent::__construct($config + $defaults);
-		
+
 		$this->_responseTypes += array(
 			'token' => function($response) {
 				$code = $response->status['code'];
 				$data = $body = $response->body();
 				if (!is_array($body)) {
-					parse_str($body, $data);	
+					parse_str($body, $data);
 				}
 				if (!empty($response->headers['WWW-Authenticate'])) {
 					preg_match('/OAuth ([^\s]+)/s', $response->headers['WWW-Authenticate'], $match);
@@ -81,7 +81,7 @@ class OAuthService extends \lithium\net\http\Service {
 		$options += $defaults + $this->_config;
 		$oauth = (array) $options['oauth'];
 		ksort($oauth);
-		
+
 		// append extra query parameters to our data
 		$query = $options['query'];
 		if (!is_array($query)) {
@@ -90,7 +90,7 @@ class OAuthService extends \lithium\net\http\Service {
 		}
 		$data += $query;
 		$options['query'] = '';
-		
+
 		// calculate signature if requested
 		if ($options['sign']) {
 			$oauth['oauth_signature'] = $this->_sign($options['sign'], $oauth['oauth_signature_method'], array(
@@ -99,7 +99,7 @@ class OAuthService extends \lithium\net\http\Service {
 				'params' => $oauth + $data
 			));
 		}
-		
+
 		// generate header if requested
 		if ($options['headers']) {
 			$header = 'OAuth realm="' . $options['realm'] . '"';
@@ -109,7 +109,7 @@ class OAuthService extends \lithium\net\http\Service {
 			$options['headers'] = array('Authorization' => $header);
 			$oauth = array();
 		}
-		
+
 		$options['host'] = $options['proxy'] ?: $options['host'];
 		return parent::_request($method, $path, $data + $oauth, $options);
 	}
@@ -125,13 +125,13 @@ class OAuthService extends \lithium\net\http\Service {
 	 */
 	public function url($path, array $data = array(), array $options = array()) {
 		$options += $this->_config;
-		
+
 		// compile our path
 		if ($path[0] !== '/' && empty($options['host'])) {
 			$path = $options['path'] . $path;
 		}
 		$options = compact('path') + $options;
-		
+
 		// compile our query string
 		$query = $options['query'];
 		if (!is_array($query)) {
@@ -141,7 +141,7 @@ class OAuthService extends \lithium\net\http\Service {
 		if ($data || $query) {
 			$options['query'] = '?' . http_build_query($data + $query);
 		}
-		
+
 		// use port only if non-default
 		if (($options['scheme'] == 'http' && $options['port'] == 80) ||
 			($options['scheme'] == 'https' && $options['port'] == 443)) {
@@ -150,7 +150,7 @@ class OAuthService extends \lithium\net\http\Service {
 		elseif ($options['port']) {
 			$options['port'] = ':'.$options['port'];
 		}
-		
+
 		$options['authority'] = '';
 		if ($options['username']) {
 			$options['authority'] .= $options['username'];
@@ -159,7 +159,7 @@ class OAuthService extends \lithium\net\http\Service {
 			}
 			$options['authority'] .= '@';
 		}
-		
+
 		return String::insert("{:scheme}://{:authority}{:host}{:port}{:path}{:query}", $options);
 	}
 
@@ -183,21 +183,21 @@ class OAuthService extends \lithium\net\http\Service {
 			'params' => array()
 		);
 		$request += $defaults;
-		
-		
+
+
 		// calculate the base
 		$params = array();
 		foreach((array) $request['params'] as $k => $v) {
 			$params[$k] = $k . '=' . rawurlencode($v);
 		}
 		uksort($params, 'strcmp');
-		
+
 		$base = join('&', array(
 			strtoupper($request['method']),
 			rawurlencode(strtolower($request['url'])),
 			rawurlencode(join('&',$params))
 		));
-		
+
 		switch ($method) {
 			case 'HMAC-SHA1':
 				$signature = base64_encode(hash_hmac('sha1', $base, $key, true));

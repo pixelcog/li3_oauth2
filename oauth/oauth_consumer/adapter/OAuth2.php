@@ -20,5 +20,5 @@ use lithium\util\Inflector;
  *
  */
 class OAuth2 extends \lithium\core\Object {
-	
+
 }
